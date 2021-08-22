@@ -1,7 +1,7 @@
 import { Meteor } from 'meteor/meteor';
 import { Match, check } from 'meteor/check';
 
-import { Messages } from '../../../models';
+import { Messages, Tasks } from '../../../models';
 import { canAccessRoom, hasPermission } from '../../../authorization';
 import { normalizeMessagesForUser } from '../../../utils/server/lib/normalizeMessagesForUser';
 import { processWebhookMessage } from '../../../lib/server';
@@ -86,6 +86,26 @@ API.v1.addRoute('chat.getMessage', { authRequired: true }, {
 			return API.v1.failure('The "msgId" query parameter must be provided.');
 		}
 
+		const { taskRoomId } = this.queryParams;
+
+		if (taskRoomId && taskRoomId.length) {
+			let task;
+
+			Meteor.runAsUser(this.userId, () => {
+				task = Meteor.call('getSingleTask', this.queryParams.msgId);
+			});
+
+			if (!task) {
+				return API.v1.failure();
+			}
+
+			const [taskNormalized] = normalizeMessagesForUser([task], this.userId);
+
+			return API.v1.success({
+				message: taskNormalized,
+			});
+		}
+
 		let msg;
 		Meteor.runAsUser(this.userId, () => {
 			msg = Meteor.call('getSingleMessage', this.queryParams.msgId);
@@ -147,7 +167,7 @@ API.v1.addRoute('chat.postMessage', { authRequired: true }, {
 API.v1.addRoute('chat.search', { authRequired: true }, {
 	get() {
 		const { roomId, searchText } = this.queryParams;
-		const { count } = this.getPaginationItems();
+		const { offset, count } = this.getPaginationItems();
 
 		if (!roomId) {
 			throw new Meteor.Error('error-roomId-param-not-provided', 'The required "roomId" query param is missing.');
@@ -158,7 +178,7 @@ API.v1.addRoute('chat.search', { authRequired: true }, {
 		}
 
 		let result;
-		Meteor.runAsUser(this.userId, () => { result = Meteor.call('messageSearch', searchText, roomId, count).message.docs; });
+		Meteor.runAsUser(this.userId, () => { result = Meteor.call('messageSearch', searchText, roomId, count, offset).message.docs; });
 
 		return API.v1.success({
 			messages: normalizeMessagesForUser(result, this.userId),
@@ -174,8 +194,8 @@ API.v1.addRoute('chat.sendMessage', { authRequired: true }, {
 		if (!this.bodyParams.message) {
 			throw new Meteor.Error('error-invalid-params', 'The "message" parameter must be provided.');
 		}
-
 		const sent = executeSendMessage(this.userId, this.bodyParams.message);
+
 		const [message] = normalizeMessagesForUser([sent], this.userId);
 
 		return API.v1.success({
@@ -439,7 +459,7 @@ API.v1.addRoute('chat.getThreadsList', { authRequired: true }, {
 			throw new Meteor.Error('error-not-allowed', 'Threads Disabled');
 		}
 		const user = Users.findOneById(this.userId, { fields: { _id: 1 } });
-		const room = Rooms.findOneById(rid, { fields: { t: 1, _id: 1 } });
+		const room = Rooms.findOneById(rid, { fields: { t: 1, _id: 1, taskRoomId: 1 } });
 		if (!canAccessRoom(room, user)) {
 			throw new Meteor.Error('error-not-allowed', 'Not Allowed');
 		}
@@ -456,13 +476,22 @@ API.v1.addRoute('chat.getThreadsList', { authRequired: true }, {
 		};
 
 		const threadQuery = { ...query, ...typeThread, rid, tcount: { $exists: true } };
-		const cursor = Messages.find(threadQuery, {
-			sort: sort || { tlm: -1 },
-			skip: offset,
-			limit: count,
-			fields,
-		});
-
+		let cursor;
+		if (room.taskRoomId) {
+			cursor = Tasks.find(threadQuery, {
+				sort: sort || { tlm: -1 },
+				skip: offset,
+				limit: count,
+				fields,
+			});
+		} else {
+			cursor = Messages.find(threadQuery, {
+				sort: sort || { tlm: -1 },
+				skip: offset,
+				limit: count,
+				fields,
+			});
+		}
 		const total = cursor.count();
 
 		const threads = cursor.fetch();

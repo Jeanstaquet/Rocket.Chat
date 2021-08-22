@@ -8,14 +8,15 @@ import { MentionsParser } from '../../../mentions/lib/MentionsParser';
 import { emojiParser } from '../../../emoji/client/emojiParser.js';
 
 export const normalizeThreadTitle = ({ ...message }) => {
-	if (message.msg) {
-		const filteredMessage = filterMarkdown(escapeHTML(message.msg));
+	const msg = message.msg || message.title;
+	if (msg) {
+		const filteredMessage = filterMarkdown(escapeHTML(msg));
 		if (!message.channels && !message.mentions) {
 			return filteredMessage;
 		}
 		const uid = Meteor.userId();
 		const me = uid && (Users.findOne(uid, { fields: { username: 1 } }) || {}).username;
-		const pattern = settings.get('UTF8_Names_Validation');
+		const pattern = settings.get('UTF8_User_Names_Validation');
 		const useRealName = settings.get('UI_Use_Real_Name');
 
 		const instance = new MentionsParser({
@@ -26,7 +27,9 @@ export const normalizeThreadTitle = ({ ...message }) => {
 			roomTemplate: ({ prefix, mention }) => `${ prefix }<strong> ${ mention } </strong>`,
 		});
 		const { html } = emojiParser({ html: filteredMessage });
-		return instance.parse({ ...message, msg: filteredMessage, html }).html;
+		const parsedInstace = message.title ? instance.parse({ ...message, title: filteredMessage, html }).html : instance.parse({ ...message, msg: filteredMessage, html }).html;
+
+		return parsedInstace;
 	}
 
 	if (message.attachments) {

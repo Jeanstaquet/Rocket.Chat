@@ -108,6 +108,19 @@ export class ListenersModule {
 			notifications.streamRoomMessage.emitWithoutBroadcast(message.rid, message);
 		});
 
+		service.onEvent('watch.tasks', ({ task }) => {
+			if (!task.rid) {
+				return;
+			}
+
+			notifications.streamRoomTask._emit('__my_tasks__', [task], undefined, false, (streamer, _sub, eventName, args, allowed) => streamer.changedPayload(streamer.subscriptionName, 'id', {
+				eventName,
+				args: [...args, allowed],
+			}));
+
+			notifications.streamRoomTask.emitWithoutBroadcast(task.rid, task);
+		});
+
 		service.onEvent('watch.subscriptions', ({ clientAction, subscription }) => {
 			if (!subscription.u?._id) {
 				return;
@@ -116,6 +129,7 @@ export class ListenersModule {
 			// emit a removed event on msg stream to remove the user's stream-room-messages subscription when the user is removed from room
 			if (clientAction === 'removed') {
 				notifications.streamRoomMessage.__emit(subscription.u._id, clientAction, subscription);
+				// notifications.streamRoomTask.__emit(subscription.u._id, clientAction, subscription);
 			}
 
 			notifications.streamUser.__emit(subscription.u._id, clientAction, subscription);

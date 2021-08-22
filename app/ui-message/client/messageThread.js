@@ -22,6 +22,7 @@ const findParentMessage = (() => {
 	const get = async (tmid) => {
 		getMessages();
 		const messages = await pending;
+
 		return messages.find(({ _id }) => _id === tmid);
 	};
 
@@ -43,6 +44,7 @@ const findParentMessage = (() => {
 Template.messageThread.helpers({
 	parentMessage() {
 		const { parentMessage } = Template.instance();
+
 		if (parentMessage) {
 			return normalizeThreadTitle(parentMessage.get());
 		}

@@ -35,13 +35,14 @@ export const subscriptionFields = {
 	E2EKey: 1,
 	tunread: 1,
 	tunreadGroup: 1,
+	taskRoomId: 1,
 	tunreadUser: 1,
 
 	// Omnichannel fields
 	department: 1,
 	v: 1,
 	onHold: 1,
-};
+} as const;
 
 export const roomFields = {
 	_id: 1,
@@ -70,6 +71,8 @@ export const roomFields = {
 	prid: 1,
 	avatarETag: 1,
 	usersCount: 1,
+
+	taskRoomId: 1,
 
 	// @TODO create an API to register this fields based on room type
 	tags: 1,

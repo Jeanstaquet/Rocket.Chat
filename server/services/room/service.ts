@@ -6,6 +6,7 @@ import { Authorization } from '../../sdk';
 import { IRoom } from '../../../definition/IRoom';
 import { UsersRaw } from '../../../app/models/server/raw/Users';
 import { createRoom } from '../../../app/lib/server/functions/createRoom'; // TODO remove this import
+import { IUser } from '../../../definition/IUser';
 
 export class RoomService extends ServiceClass implements IRoomService {
 	protected name = 'room';
@@ -26,13 +27,13 @@ export class RoomService extends ServiceClass implements IRoomService {
 			throw new Error('no-permission');
 		}
 
-		const user = await this.Users.findOneById(uid, { projection: { username: 1 } });
+		const user = await this.Users.findOneById<Pick<IUser, 'username'>>(uid, { projection: { username: 1 } });
 		if (!user) {
 			throw new Error('User not found');
 		}
 
 		// TODO convert `createRoom` function to "raw" and move to here
-		return createRoom(type, name, user.username, members, readOnly, extraData as { teamId: string }, options) as unknown as IRoom;
+		return createRoom(type, name, user.username, members, readOnly, extraData as { teamId: string; taskRoomId: string }, options) as unknown as IRoom;
 	}
 
 	async addMember(uid: string, rid: string): Promise<boolean> {

@@ -4,6 +4,7 @@ import React, { useDebugValue, useMemo } from 'react';
 import { ErrorBoundary } from '../../../components/ErrorBoundary';
 import { useTranslation } from '../../../contexts/TranslationContext';
 import { useUserPreference } from '../../../contexts/UserContext';
+import TaskRoom from '../../taskRoom/components/TaskRoom';
 import Header from '../Header';
 import BlazeTemplate from '../components/BlazeTemplate';
 import { RoomTemplate } from '../components/RoomTemplate/RoomTemplate';
@@ -31,28 +32,31 @@ const Room = () => {
 	const hideFlexTab = useUserPreference('hideFlexTab');
 	const isOpen = useMutableCallback(() => !!(tab && tab.template));
 
-	const tabBar = useMemo(() => ({ open, close, isOpen, openUserInfo }), [
-		open,
-		close,
-		isOpen,
-		openUserInfo,
-	]);
+	const tabBar = useMemo(
+		() => ({ open, close, isOpen, openUserInfo }),
+		[open, close, isOpen, openUserInfo],
+	);
 
 	useDebugValue(room);
 	useDebugValue(tab);
+
 	return (
 		<RoomTemplate aria-label={t('Channel')} data-qa-rc-room={room._id}>
 			<RoomTemplate.Header>
 				<Header room={room} rid={room._id} />
 			</RoomTemplate.Header>
 			<RoomTemplate.Body>
-				<BlazeTemplate
-					onClick={hideFlexTab ? close : undefined}
-					name='roomOld'
-					tabBar={tabBar}
-					rid={room._id}
-					_id={room._id}
-				/>
+				{room.taskRoomId ? (
+					<TaskRoom tabBar={tabBar} rid={room._id} _id={room._id} />
+				) : (
+					<BlazeTemplate
+						onClick={hideFlexTab ? close : undefined}
+						name='roomOld'
+						tabBar={tabBar}
+						rid={room._id}
+						_id={room._id}
+					/>
+				)}
 			</RoomTemplate.Body>
 			{tab && (
 				<RoomTemplate.Aside data-qa-tabbar-name={tab.id}>
